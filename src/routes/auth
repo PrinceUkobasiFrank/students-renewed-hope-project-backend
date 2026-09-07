@@ -1,0 +1,102 @@
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const pool = require('../db/pool');
+const asyncHandler = require('../utils/asyncHandler');
+const { signStudentToken, signAdminToken } = require('../utils/jwt');
+const { sendEmail } = require('../utils/email');
+const { welcomeEmail } = require('../utils/emailTemplates');
+
+const router = express.Router();
+
+// POST /api/auth/register — matches register.js's regForm submit
+router.post('/register', asyncHandler(async (req, res) => {
+  const { first_name, last_name, email, phone, state_id, institution_id, level, password, consent } = req.body;
+
+  if (!first_name || !last_name || !email || !state_id || !level || !password) {
+    return res.status(400).json({ error: 'first_name, last_name, email, state_id, level, and password are required.' });
+  }
+  if (!consent) {
+    return res.status(400).json({ error: 'Consent is required to register.' });
+  }
+
+  const existing = await pool.query('SELECT id FROM students WHERE email = $1', [email]);
+  if (existing.rows.length) {
+    return res.status(409).json({ error: 'An account with this email already exists.' });
+  }
+
+  const stateResult = await pool.query('SELECT name, status FROM states WHERE id = $1', [state_id]);
+  if (!stateResult.rows.length) {
+    return res.status(400).json({ error: 'Invalid state_id.' });
+  }
+  const state = stateResult.rows[0];
+
+  const password_hash = await bcrypt.hash(password, 10);
+  const { rows } = await pool.query(
+    `INSERT INTO students (first_name, last_name, email, password_hash, phone, state_id, institution_id, level)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, first_name, last_name, email, state_id`,
+    [first_name, last_name, email, password_hash, phone || null, state_id, institution_id || null, level]
+  );
+  const student = rows[0];
+
+  await pool.query(
+    `INSERT INTO activity_events (student_id, event_type, metadata) VALUES ($1, 'student_registered', $2)`,
+    [student.id, JSON.stringify({ state_id })]
+  );
+
+  const token = signStudentToken(student);
+  res.status(201).json({ token, student });
+
+  // Fire the welcome email after responding — a slow/failed email should
+  // never delay or break the registration response the frontend is waiting on.
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5500';
+  const { subject, html, text } = welcomeEmail(
+    { ...student, stateName: state.name },
+    {
+      dashboardUrl: `${frontendUrl}/dashboard.html`,
+      cardUrl: `${frontendUrl}/card.html`,
+      stateActive: state.status === 'active'
+    }
+  );
+  sendEmail({ to: student.email, subject, html, text }).catch((err) => {
+    console.warn(`Welcome email failed for ${student.email}:`, err.message);
+  });
+}));
+
+// POST /api/auth/login — matches the student portal's login.js
+router.post('/login', asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+
+  const { rows } = await pool.query('SELECT * FROM students WHERE email = $1', [email]);
+  const student = rows[0];
+  if (!student || !(await bcrypt.compare(password, student.password_hash))) {
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  const token = signStudentToken(student);
+  res.json({
+    token,
+    student: { id: student.id, first_name: student.first_name, last_name: student.last_name, email: student.email, state_id: student.state_id }
+  });
+}));
+
+// POST /api/admin/auth/login — matches admin/js/admin-login.js
+router.post('/admin/login', asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+
+  const { rows } = await pool.query('SELECT * FROM admins WHERE email = $1 AND status = $2', [email, 'active']);
+  const admin = rows[0];
+  if (!admin || !(await bcrypt.compare(password, admin.password_hash))) {
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  const token = signAdminToken(admin);
+  res.json({
+    token,
+    admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role, state_id: admin.state_id }
+  });
+}));
+
+module.exports = router;
