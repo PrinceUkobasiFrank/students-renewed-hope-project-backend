@@ -1,0 +1,97 @@
+// Actual copy for the welcome email, not placeholder text. Keep this in
+// its own file so updating the wording later doesn't mean touching the
+// registration route.
+
+function welcomeEmail(student, { dashboardUrl, cardUrl, stateActive }) {
+  const firstName = student.first_name;
+  const stateName = student.stateName || 'your state';
+
+  const communityLine = stateActive
+    ? `Your ${stateName} community is already active — you'll find the link waiting on your dashboard.`
+    : `${stateName} doesn't have an active community yet — which means you're not late, you're early. Early is how these things start.`;
+
+  const subject = `You're on the list, ${firstName}.`;
+
+  const text = `Hi ${firstName},
+
+Every list starts somewhere. Yours starts here — as one of the registered students in ${stateName}.
+
+Here's what just happened: you didn't just sign up for a website. You joined a running count. Every student who registers makes the picture of who's actually organized a little more accurate — state by state, institution by institution. That count is real now, and you're part of it.
+
+Two things worth doing next:
+
+1. Generate your supporter card — takes under a minute, and every card shared brings someone else into the count too.
+   ${cardUrl}
+
+2. ${communityLine}
+
+Go to your dashboard: ${dashboardUrl}
+
+Welcome in.
+
+— The Students Renewed Hope Project team`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background-color:#EEF0E9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#EEF0E9;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:520px;background-color:#ffffff;border:1px solid #C9CDBD;">
+          <tr>
+            <td style="background-color:#123524;padding:28px 32px;">
+              <span style="color:#E7A83D;font-weight:800;font-size:1.3rem;letter-spacing:0.02em;">SRHP</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:36px 32px 8px;">
+              <h1 style="margin:0 0 20px;font-size:1.5rem;color:#16201A;">You're on the list, ${firstName}.</h1>
+              <p style="margin:0 0 16px;font-size:1rem;line-height:1.6;color:#3E463A;">
+                Every list starts somewhere. Yours starts here — as one of the registered students in <strong>${stateName}</strong>.
+              </p>
+              <p style="margin:0 0 16px;font-size:1rem;line-height:1.6;color:#3E463A;">
+                Here's what just happened: you didn't just sign up for a website. You joined a running count.
+                Every student who registers makes the picture of who's actually organized a little more accurate —
+                state by state, institution by institution. That count is real now, and you're part of it.
+              </p>
+              <p style="margin:24px 0 8px;font-size:1rem;line-height:1.6;color:#3E463A;font-weight:700;">
+                Two things worth doing next:
+              </p>
+              <p style="margin:0 0 12px;font-size:1rem;line-height:1.6;color:#3E463A;">
+                1. Generate your supporter card — takes under a minute, and every card shared brings someone else into the count too.
+              </p>
+              <p style="margin:0 0 24px;font-size:1rem;line-height:1.6;color:#3E463A;">
+                2. ${communityLine}
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 28px;">
+                <tr>
+                  <td style="background-color:#E7A83D;">
+                    <a href="${dashboardUrl}" style="display:inline-block;padding:14px 28px;color:#123524;font-weight:700;text-decoration:none;font-size:0.95rem;">
+                      Go to your dashboard
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 4px;font-size:1rem;line-height:1.6;color:#3E463A;">Welcome in.</p>
+              <p style="margin:0;font-size:0.9rem;color:#5B6459;">— The Students Renewed Hope Project team</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px;border-top:1px solid #C9CDBD;">
+              <p style="margin:0;font-size:0.78rem;color:#8A9080;">
+                Students Renewed Hope Project · Digital infrastructure for organizing the student network.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, html, text };
+}
+
+module.exports = { welcomeEmail };
