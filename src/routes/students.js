@@ -9,8 +9,11 @@ const router = express.Router();
 router.get('/me', requireStudentAuth, asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT st.id, st.first_name, st.last_name, st.email, st.phone, st.level, st.ward, st.lga,
-            st.profile_photo_url, st.created_at, s.name AS state, s.id AS state_id
-     FROM students st JOIN states s ON s.id = st.state_id
+            st.profile_photo_url, st.created_at, s.name AS state, s.id AS state_id,
+            COALESCE(i.name, st.institution_name_freetext) AS institution_name_freetext
+     FROM students st
+     JOIN states s ON s.id = st.state_id
+     LEFT JOIN institutions i ON i.id = st.institution_id
      WHERE st.id = $1`,
     [req.student.id]
   );
