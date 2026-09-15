@@ -87,8 +87,10 @@ router.get('/students', requireAdminAuth(['super_admin', 'national_admin', 'stat
 
   const dataResult = await pool.query(
     `SELECT st.id, st.first_name, st.last_name, st.level, st.created_at,
-            s.name AS state, st.institution_name_freetext AS institution
-     FROM students st JOIN states s ON s.id = st.state_id
+            s.name AS state, COALESCE(i.name, st.institution_name_freetext) AS institution
+     FROM students st
+     JOIN states s ON s.id = st.state_id
+     LEFT JOIN institutions i ON i.id = st.institution_id
      ${whereClause}
      ORDER BY st.created_at DESC
      LIMIT $${i} OFFSET $${i + 1}`,
@@ -200,6 +202,99 @@ router.post('/admins', requireAdminAuth(['super_admin']), asyncHandler(async (re
     [name, email, password_hash, role, role === 'state_coordinator' ? state_id : null]
   );
 
+  res.status(201).json(rows[0]);
+}));
+
+// GET /api/admin/states — matches admin/js/states.js's expectations; same
+// shape as public GET /api/states, just doesn't require it to be a
+// separate lookup since this page already needs admin auth anyway.
+router.get('/states', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
+  const statesResult = await pool.query(`
+    SELECT s.id, s.name, s.code, s.status, COUNT(st.id) AS students
+    FROM states s LEFT JOIN students st ON st.state_id = s.id
+    GROUP BY s.id ORDER BY s.name
+  `);
+  const linksResult = await pool.query(`SELECT * FROM state_community_links ORDER BY id`);
+  const linksByState = {};
+  linksResult.rows.forEach((link) => {
+    if (!linksByState[link.state_id]) linksByState[link.state_id] = [];
+    linksByState[link.state_id].push(link);
+  });
+  const states = statesResult.rows.map((s) => ({
+    id: s.id,
+    name: s.name,
+    code: s.code,
+    status: s.status,
+    students: parseInt(s.students, 10),
+    community_links: linksByState[s.id] || [],
+    community_members: (linksByState[s.id] || []).reduce((sum, l) => sum + (l.member_count || 0), 0) || null
+  }));
+  res.json(states);
+}));
+
+// PATCH /api/admin/states/:id — currently just status (active/pending);
+// a state coordinator can only ever act on their own state.
+router.patch('/states/:id', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  const stateId = parseInt(req.params.id, 10);
+  if (req.admin.role === 'state_coordinator' && req.admin.state_id !== stateId) {
+    return res.status(403).json({ error: 'You can only manage your own state.' });
+  }
+  if (!['active', 'pending'].includes(status)) {
+    return res.status(400).json({ error: "status must be 'active' or 'pending'." });
+  }
+  const { rows } = await pool.query(
+    `UPDATE states SET status = $1, updated_at = now() WHERE id = $2 RETURNING id, name, status`,
+    [status, stateId]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'State not found.' });
+  res.json(rows[0]);
+}));
+
+// POST /api/admin/states/:id/community-links — e.g. a WhatsApp group link
+router.post('/states/:id/community-links', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
+  const stateId = parseInt(req.params.id, 10);
+  if (req.admin.role === 'state_coordinator' && req.admin.state_id !== stateId) {
+    return res.status(403).json({ error: 'You can only manage your own state.' });
+  }
+  const { label, note, url, member_count } = req.body;
+  if (!label || !url) return res.status(400).json({ error: 'label and url are required.' });
+
+  const { rows } = await pool.query(
+    `INSERT INTO state_community_links (state_id, label, note, url, member_count)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [stateId, label, note || null, url, member_count || 0]
+  );
+  res.status(201).json(rows[0]);
+}));
+
+// DELETE /api/admin/states/:id/community-links/:linkId
+router.delete('/states/:id/community-links/:linkId', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
+  const stateId = parseInt(req.params.id, 10);
+  if (req.admin.role === 'state_coordinator' && req.admin.state_id !== stateId) {
+    return res.status(403).json({ error: 'You can only manage your own state.' });
+  }
+  await pool.query('DELETE FROM state_community_links WHERE id = $1 AND state_id = $2', [req.params.linkId, stateId]);
+  res.status(204).send();
+}));
+
+// POST /api/admin/institutions — lets an admin add an institution that
+// isn't in the starting seed list yet, so it shows up as a real dropdown
+// option on the registration form (not just "Other — type it in").
+router.post('/institutions', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
+  const { name, state_id, type } = req.body;
+  if (!name || !state_id) return res.status(400).json({ error: 'name and state_id are required.' });
+  if (req.admin.role === 'state_coordinator' && req.admin.state_id !== parseInt(state_id, 10)) {
+    return res.status(403).json({ error: 'You can only add institutions in your own state.' });
+  }
+
+  const existing = await pool.query('SELECT id FROM institutions WHERE name = $1 AND state_id = $2', [name, state_id]);
+  if (existing.rows.length) return res.status(409).json({ error: 'This institution is already listed for that state.' });
+
+  const { rows } = await pool.query(
+    `INSERT INTO institutions (name, state_id, type) VALUES ($1, $2, $3) RETURNING *`,
+    [name, state_id, type || 'university']
+  );
   res.status(201).json(rows[0]);
 }));
 
