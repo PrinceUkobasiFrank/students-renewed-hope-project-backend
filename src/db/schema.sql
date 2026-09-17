@@ -67,7 +67,7 @@ CREATE INDEX IF NOT EXISTS idx_students_email ON students(email);
 -- ---------- cards ----------
 CREATE TABLE IF NOT EXISTS cards (
   id SERIAL PRIMARY KEY,
-  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  student_id INTEGER REFERENCES students(id) ON DELETE CASCADE, -- nullable: card generation doesn't require login
   template_id VARCHAR(50) DEFAULT 'default',
   ward VARCHAR(100),
   lga VARCHAR(100),
@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS cards (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_cards_student ON cards(student_id);
+ALTER TABLE cards ALTER COLUMN student_id DROP NOT NULL;
 
 -- ---------- news ----------
 CREATE TABLE IF NOT EXISTS news (
@@ -86,6 +87,7 @@ CREATE TABLE IF NOT EXISTS news (
   body TEXT,
   category VARCHAR(30) NOT NULL DEFAULT 'community' CHECK (category IN ('community', 'product', 'policy')),
   cover_image TEXT,
+  source_url TEXT, -- link back to the original Facebook/WhatsApp/etc. post
   status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   author_id INTEGER, -- FK to admins, added after admins table exists
   published_at TIMESTAMPTZ,
@@ -93,6 +95,7 @@ CREATE TABLE IF NOT EXISTS news (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_news_status ON news(status, published_at DESC);
+ALTER TABLE news ADD COLUMN IF NOT EXISTS source_url TEXT;
 
 -- ---------- admins ----------
 CREATE TABLE IF NOT EXISTS admins (
