@@ -1,26 +1,31 @@
 const express = require('express');
 const pool = require('../db/pool');
 const asyncHandler = require('../utils/asyncHandler');
-const { requireStudentAuth } = require('../middleware/auth');
+const { requireStudentAuth, optionalStudentAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// POST /api/cards — matches card.js's NOTE comment: records a generated
-// card against the logged-in student. image_url is optional here; if you
-// want the rendered PNG stored, upload it to Cloud Storage client-side (or
-// via a follow-up endpoint) and pass the resulting URL.
-router.post('/', requireStudentAuth, asyncHandler(async (req, res) => {
+// POST /api/cards — records a generated card. No login required (card
+// generation is deliberately frictionless), but if the visitor happens to
+// be logged in, the card is linked to their profile via optionalStudentAuth.
+// image_url is optional here; if you want the rendered PNG stored, upload
+// it to Cloud Storage client-side (or via a follow-up endpoint) and pass
+// the resulting URL.
+router.post('/', optionalStudentAuth, asyncHandler(async (req, res) => {
   const { ward, lga, image_url } = req.body;
+  const studentId = req.student ? req.student.id : null;
 
   const { rows } = await pool.query(
     `INSERT INTO cards (student_id, ward, lga, image_url) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [req.student.id, ward || null, lga || null, image_url || null]
+    [studentId, ward || null, lga || null, image_url || null]
   );
 
-  await pool.query(
-    `INSERT INTO activity_events (student_id, event_type, metadata) VALUES ($1, 'card_generated', $2)`,
-    [req.student.id, JSON.stringify({ card_id: rows[0].id })]
-  );
+  if (studentId) {
+    await pool.query(
+      `INSERT INTO activity_events (student_id, event_type, metadata) VALUES ($1, 'card_generated', $2)`,
+      [studentId, JSON.stringify({ card_id: rows[0].id })]
+    );
+  }
 
   res.status(201).json(rows[0]);
 }));
