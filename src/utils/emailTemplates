@@ -1,6 +1,76 @@
-// Actual copy for the welcome email, not placeholder text. Keep this in
-// its own file so updating the wording later doesn't mean touching the
-// registration route.
+// Copy + HTML for every email the platform sends. Kept in its own file so
+// updating wording or visual design later doesn't mean touching route logic.
+//
+// LOGO_URL must be a real, publicly reachable URL — email clients fetch
+// images over HTTP, they can't read local files from the repo. This points
+// at the favicon set shipped with the frontend, so it stays in sync with
+// whatever logo is live on the site.
+const SITE_URL = process.env.FRONTEND_URL || 'https://studentsrenewedhopeproject.com.ng';
+const LOGO_URL = `${SITE_URL}/images/favicons/android-chrome-192x192.png`;
+const GREEN = '#123524';
+const GOLD = '#E7A83D';
+const INK = '#16201A';
+const INK_SOFT = '#3E463A';
+const MUTED = '#8A9080';
+const LINE = '#C9CDBD';
+
+// Shared shell: dark green header with logo, white content card, footer.
+// `bodyHtml` is the inner content only — callers don't touch table markup.
+function emailShell(bodyHtml, { preheader = '' } = {}) {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#EEF0E9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${preheader}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#EEF0E9;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:520px;background-color:#ffffff;border:1px solid ${LINE};">
+          <tr>
+            <td style="background-color:${GREEN};padding:24px 32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:12px;">
+                    <img src="${LOGO_URL}" width="40" height="40" alt="SRHP" style="display:block;border-radius:50%;border:2px solid ${GOLD};">
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <span style="color:${GOLD};font-weight:800;font-size:1.05rem;letter-spacing:0.02em;font-family:Georgia,'Times New Roman',serif;">
+                      STUDENTS RENEWED HOPE PROJECT
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr><td style="padding:36px 32px 8px;">${bodyHtml}</td></tr>
+          <tr>
+            <td style="padding:20px 32px;border-top:1px solid ${LINE};">
+              <p style="margin:0;font-size:0.78rem;color:${MUTED};">
+                Students Renewed Hope Project · Digital infrastructure for organizing the student network.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function button(url, label) {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 8px;">
+      <tr>
+        <td style="background-color:${GOLD};">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;color:${GREEN};font-weight:700;text-decoration:none;font-size:0.95rem;">
+            ${label}
+          </a>
+        </td>
+      </tr>
+    </table>`;
+}
 
 function welcomeEmail(student, { dashboardUrl, cardUrl, stateActive }) {
   const firstName = student.first_name;
@@ -31,67 +101,69 @@ Welcome in.
 
 — The Students Renewed Hope Project team`;
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<body style="margin:0;padding:0;background-color:#EEF0E9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#EEF0E9;padding:32px 16px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:520px;background-color:#ffffff;border:1px solid #C9CDBD;">
-          <tr>
-            <td style="background-color:#123524;padding:28px 32px;">
-              <span style="color:#E7A83D;font-weight:800;font-size:1.3rem;letter-spacing:0.02em;">SRHP</span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:36px 32px 8px;">
-              <h1 style="margin:0 0 20px;font-size:1.5rem;color:#16201A;">You're on the list, ${firstName}.</h1>
-              <p style="margin:0 0 16px;font-size:1rem;line-height:1.6;color:#3E463A;">
-                Every list starts somewhere. Yours starts here — as one of the registered students in <strong>${stateName}</strong>.
-              </p>
-              <p style="margin:0 0 16px;font-size:1rem;line-height:1.6;color:#3E463A;">
-                Here's what just happened: you didn't just sign up for a website. You joined a running count.
-                Every student who registers makes the picture of who's actually organized a little more accurate —
-                state by state, institution by institution. That count is real now, and you're part of it.
-              </p>
-              <p style="margin:24px 0 8px;font-size:1rem;line-height:1.6;color:#3E463A;font-weight:700;">
-                Two things worth doing next:
-              </p>
-              <p style="margin:0 0 12px;font-size:1rem;line-height:1.6;color:#3E463A;">
-                1. Generate your supporter card — takes under a minute, and every card shared brings someone else into the count too.
-              </p>
-              <p style="margin:0 0 24px;font-size:1rem;line-height:1.6;color:#3E463A;">
-                2. ${communityLine}
-              </p>
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 28px;">
-                <tr>
-                  <td style="background-color:#E7A83D;">
-                    <a href="${dashboardUrl}" style="display:inline-block;padding:14px 28px;color:#123524;font-weight:700;text-decoration:none;font-size:0.95rem;">
-                      Go to your dashboard
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:0 0 4px;font-size:1rem;line-height:1.6;color:#3E463A;">Welcome in.</p>
-              <p style="margin:0;font-size:0.9rem;color:#5B6459;">— The Students Renewed Hope Project team</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:20px 32px;border-top:1px solid #C9CDBD;">
-              <p style="margin:0;font-size:0.78rem;color:#8A9080;">
-                Students Renewed Hope Project · Digital infrastructure for organizing the student network.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  const bodyHtml = `
+    <h1 style="margin:0 0 20px;font-size:1.5rem;color:${INK};">You're on the list, ${firstName}.</h1>
+    <p style="margin:0 0 16px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">
+      Every list starts somewhere. Yours starts here — as one of the registered students in <strong>${stateName}</strong>.
+    </p>
+    <p style="margin:0 0 16px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">
+      Here's what just happened: you didn't just sign up for a website. You joined a running count.
+      Every student who registers makes the picture of who's actually organized a little more accurate —
+      state by state, institution by institution. That count is real now, and you're part of it.
+    </p>
+    <p style="margin:24px 0 8px;font-size:1rem;line-height:1.6;color:${INK_SOFT};font-weight:700;">
+      Two things worth doing next:
+    </p>
+    <p style="margin:0 0 12px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">
+      1. Generate your supporter card — takes under a minute, and every card shared brings someone else into the count too.
+    </p>
+    <p style="margin:0 0 24px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">
+      2. ${communityLine}
+    </p>
+    ${button(dashboardUrl, 'Go to your dashboard')}
+    <p style="margin:24px 0 4px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">Welcome in.</p>
+    <p style="margin:0;font-size:0.9rem;color:${MUTED};">— The Students Renewed Hope Project team</p>
+  `;
 
-  return { subject, html, text };
+  return { subject, html: emailShell(bodyHtml, { preheader: `You're one of the registered students in ${stateName}.` }), text };
 }
 
-module.exports = { welcomeEmail };
+// Sent when an admin explicitly chooses to notify students about a published
+// update (see POST /api/admin/news/:id/notify) — not automatic on every
+// publish, so small edits don't spam the whole list.
+// {{first_name}} is a placeholder the caller swaps per-recipient, so the
+// same subject/html/text is generated once per broadcast, not once per student.
+function updateEmail(newsItem, { newsUrl }) {
+  const subject = `Update: ${newsItem.title}`;
+
+  const sourceLine = newsItem.source_url
+    ? `\nSee it where it was originally posted: ${newsItem.source_url}\n`
+    : '';
+
+  const text = `Hi {{first_name}},
+
+An update just went out from the Students Renewed Hope Project:
+
+${newsItem.title}
+
+${newsItem.excerpt}
+${sourceLine}
+Read the full update: ${newsUrl}
+
+— The Students Renewed Hope Project team`;
+
+  const bodyHtml = `
+    <p style="margin:0 0 4px;font-size:0.8rem;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:${GOLD};background:${GREEN};display:inline-block;padding:4px 10px;">
+      ${newsItem.category || 'Update'}
+    </p>
+    <h1 style="margin:16px 0 16px;font-size:1.4rem;color:${INK};">${newsItem.title}</h1>
+    <p style="margin:0 0 16px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">Hi {{first_name}},</p>
+    <p style="margin:0 0 24px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">${newsItem.excerpt}</p>
+    ${button(newsUrl, 'Read the full update')}
+    ${newsItem.source_url ? `<p style="margin:16px 0 0;font-size:0.9rem;"><a href="${newsItem.source_url}" style="color:${GREEN};font-weight:700;">See it where it was originally posted →</a></p>` : ''}
+  `;
+
+  return { subject, html: emailShell(bodyHtml, { preheader: newsItem.excerpt }), text };
+}
+
+module.exports = { welcomeEmail, updateEmail };
