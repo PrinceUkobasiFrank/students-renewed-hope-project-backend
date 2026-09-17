@@ -68,7 +68,7 @@ router.get('/students', requireAdminAuth(['super_admin', 'national_admin', 'stat
     params.push(state);
   }
   if (search) {
-    conditions.push(`(st.first_name ILIKE $${i} OR st.last_name ILIKE $${i} OR st.institution_name_freetext ILIKE $${i})`);
+    conditions.push(`(st.first_name ILIKE $${i} OR st.last_name ILIKE $${i} OR st.email ILIKE $${i} OR st.institution_name_freetext ILIKE $${i})`);
     params.push(`%${search}%`);
     i++;
   }
@@ -86,8 +86,10 @@ router.get('/students', requireAdminAuth(['super_admin', 'national_admin', 'stat
   );
 
   const dataResult = await pool.query(
-    `SELECT st.id, st.first_name, st.last_name, st.level, st.created_at,
-            s.name AS state, COALESCE(i.name, st.institution_name_freetext) AS institution
+    `SELECT st.id, st.first_name, st.last_name, st.email, st.phone, st.level, st.created_at,
+            s.name AS state, s.status AS state_status,
+            COALESCE(i.name, st.institution_name_freetext) AS institution,
+            (SELECT COUNT(*) FROM cards c WHERE c.student_id = st.id) AS card_count
      FROM students st
      JOIN states s ON s.id = st.state_id
      LEFT JOIN institutions i ON i.id = st.institution_id
