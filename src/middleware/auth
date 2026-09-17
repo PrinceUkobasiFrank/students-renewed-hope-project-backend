@@ -40,4 +40,24 @@ function requireAdminAuth(allowedRoles) {
   };
 }
 
-module.exports = { requireStudentAuth, requireAdminAuth };
+// Card generation is deliberately frictionless — no login required — but
+// we still want it counted in stats, and linked to a profile when one
+// exists. This attaches req.student if a valid token is present, but
+// (unlike requireStudentAuth) never blocks the request when it's absent
+// or invalid — a bad/expired token here just means an anonymous card,
+// not a rejected request.
+function optionalStudentAuth(req, res, next) {
+  const token = getTokenFromHeader(req);
+  if (!token) return next();
+  try {
+    const payload = verifyToken(token);
+    if (payload.type === 'student') {
+      req.student = { id: payload.sub, state_id: payload.state_id };
+    }
+  } catch (err) {
+    // ignore — treat as anonymous
+  }
+  next();
+}
+
+module.exports = { requireStudentAuth, requireAdminAuth, optionalStudentAuth };
