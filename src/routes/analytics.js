@@ -18,3 +18,4 @@ router.post('/pageview', asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+
