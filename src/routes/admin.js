@@ -240,6 +240,9 @@ router.get('/states', requireAdminAuth(['super_admin', 'national_admin', 'state_
 router.patch('/states/:id', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
   const { status } = req.body;
   const stateId = parseInt(req.params.id, 10);
+  if (req.admin.role === 'state_coordinator' && !req.admin.state_id) {
+    return res.status(400).json({ error: "Your admin account isn't linked to a state yet — ask your super admin to fix this in the Admins page." });
+  }
   if (req.admin.role === 'state_coordinator' && req.admin.state_id !== stateId) {
     return res.status(403).json({ error: 'You can only manage your own state.' });
   }
@@ -257,6 +260,9 @@ router.patch('/states/:id', requireAdminAuth(['super_admin', 'national_admin', '
 // POST /api/admin/states/:id/community-links — e.g. a WhatsApp group link
 router.post('/states/:id/community-links', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
   const stateId = parseInt(req.params.id, 10);
+  if (req.admin.role === 'state_coordinator' && !req.admin.state_id) {
+    return res.status(400).json({ error: "Your admin account isn't linked to a state yet — ask your super admin to fix this in the Admins page." });
+  }
   if (req.admin.role === 'state_coordinator' && req.admin.state_id !== stateId) {
     return res.status(403).json({ error: 'You can only manage your own state.' });
   }
@@ -274,6 +280,9 @@ router.post('/states/:id/community-links', requireAdminAuth(['super_admin', 'nat
 // DELETE /api/admin/states/:id/community-links/:linkId
 router.delete('/states/:id/community-links/:linkId', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
   const stateId = parseInt(req.params.id, 10);
+  if (req.admin.role === 'state_coordinator' && !req.admin.state_id) {
+    return res.status(400).json({ error: "Your admin account isn't linked to a state yet — ask your super admin to fix this in the Admins page." });
+  }
   if (req.admin.role === 'state_coordinator' && req.admin.state_id !== stateId) {
     return res.status(403).json({ error: 'You can only manage your own state.' });
   }
@@ -287,6 +296,9 @@ router.delete('/states/:id/community-links/:linkId', requireAdminAuth(['super_ad
 router.post('/institutions', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
   const { name, state_id, type } = req.body;
   if (!name || !state_id) return res.status(400).json({ error: 'name and state_id are required.' });
+  if (req.admin.role === 'state_coordinator' && !req.admin.state_id) {
+    return res.status(400).json({ error: "Your admin account isn't linked to a state yet — ask your super admin to fix this in the Admins page." });
+  }
   if (req.admin.role === 'state_coordinator' && req.admin.state_id !== parseInt(state_id, 10)) {
     return res.status(403).json({ error: 'You can only add institutions in your own state.' });
   }
