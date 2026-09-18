@@ -25,7 +25,8 @@ router.get('/dashboard', requireAdminAuth(), asyncHandler(async (req, res) => {
        (SELECT COUNT(*) FROM states WHERE status = 'active') AS active_states,
        (SELECT COUNT(*) FROM states) AS total_states,
        (SELECT COUNT(*) FROM cards ${isCoordinator ? 'c JOIN students st ON st.id = c.student_id WHERE st.state_id = $1' : ''}) AS total_cards,
-       (SELECT COALESCE(SUM(member_count), 0) FROM state_community_links) AS community_members`,
+       (SELECT COALESCE(SUM(member_count), 0) FROM state_community_links) AS community_members
+       ${req.admin.role === 'super_admin' ? ", (SELECT COUNT(*) FROM page_views) AS total_pageviews" : ''}`,
     params
   );
 
