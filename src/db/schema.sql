@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS students (
   state_id INTEGER NOT NULL REFERENCES states(id),
   institution_id INTEGER REFERENCES institutions(id),
   institution_name_freetext VARCHAR(200), -- fallback if institution isn't in our list yet
+  vin VARCHAR(19), -- Voter's Identification Number, from their PVC. Admin-eyes-only: never returned by any student-facing endpoint (see /api/students/me and /api/auth/*), only by the admin students list.
   level VARCHAR(30),
   ward VARCHAR(100),
   lga VARCHAR(100),
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS students (
 );
 CREATE INDEX IF NOT EXISTS idx_students_state ON students(state_id);
 CREATE INDEX IF NOT EXISTS idx_students_email ON students(email);
+ALTER TABLE students ADD COLUMN IF NOT EXISTS vin VARCHAR(19);
 
 -- ---------- cards ----------
 CREATE TABLE IF NOT EXISTS cards (
