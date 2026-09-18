@@ -10,7 +10,7 @@ const router = express.Router();
 
 // POST /api/auth/register — matches register.js's regForm submit
 router.post('/register', asyncHandler(async (req, res) => {
-  const { first_name, last_name, email, phone, state_id, institution_id, institution_name_freetext, level, password, consent } = req.body;
+  const { first_name, last_name, email, phone, state_id, institution_id, institution_name_freetext, level, vin, password, consent } = req.body;
 
   if (!first_name || !last_name || !email || !state_id || !level || !password) {
     return res.status(400).json({ error: 'first_name, last_name, email, state_id, level, and password are required.' });
@@ -35,10 +35,10 @@ router.post('/register', asyncHandler(async (req, res) => {
 
   const password_hash = await bcrypt.hash(password, 10);
   const { rows } = await pool.query(
-    `INSERT INTO students (first_name, last_name, email, password_hash, phone, state_id, institution_id, institution_name_freetext, level)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO students (first_name, last_name, email, password_hash, phone, state_id, institution_id, institution_name_freetext, level, vin)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id, first_name, last_name, email, state_id`,
-    [first_name, last_name, email, password_hash, phone || null, state_id, institution_id || null, institution_name_freetext || null, level]
+    [first_name, last_name, email, password_hash, phone || null, state_id, institution_id || null, institution_name_freetext || null, level, vin || null]
   );
   const student = rows[0];
 
