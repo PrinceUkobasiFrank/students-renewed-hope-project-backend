@@ -95,6 +95,8 @@ Two things worth doing next:
 
 2. ${communityLine}
 
+Your login email is ${student.email} — use the password you set at registration.
+
 Go to your dashboard: ${dashboardUrl}
 
 Welcome in.
@@ -119,6 +121,9 @@ Welcome in.
     </p>
     <p style="margin:0 0 24px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">
       2. ${communityLine}
+    </p>
+    <p style="margin:0 0 16px;font-size:0.9rem;line-height:1.6;color:${MUTED};">
+      Your login email is <strong style="color:${INK_SOFT};">${student.email}</strong> — use the password you set at registration.
     </p>
     ${button(dashboardUrl, 'Go to your dashboard')}
     <p style="margin:24px 0 4px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">Welcome in.</p>
@@ -166,4 +171,35 @@ Read the full update: ${newsUrl}
   return { subject, html: emailShell(bodyHtml, { preheader: newsItem.excerpt }), text };
 }
 
-module.exports = { welcomeEmail, updateEmail };
+// Sent from POST /api/auth/forgot-password. Deliberately short-lived
+// (see the route: 1 hour) and single-use.
+function resetPasswordEmail(student, { resetUrl }) {
+  const firstName = student.first_name;
+  const subject = 'Reset your password';
+
+  const text = `Hi ${firstName},
+
+We got a request to reset your Students Renewed Hope Project password.
+
+Reset it here (this link expires in 1 hour): ${resetUrl}
+
+If you didn't request this, you can ignore this email — your password won't change unless you click the link above and set a new one.
+
+— The Students Renewed Hope Project team`;
+
+  const bodyHtml = `
+    <h1 style="margin:0 0 20px;font-size:1.4rem;color:${INK};">Reset your password</h1>
+    <p style="margin:0 0 16px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">Hi ${firstName},</p>
+    <p style="margin:0 0 24px;font-size:1rem;line-height:1.6;color:${INK_SOFT};">
+      We got a request to reset your Students Renewed Hope Project password. This link expires in 1 hour.
+    </p>
+    ${button(resetUrl, 'Reset your password')}
+    <p style="margin:24px 0 0;font-size:0.9rem;line-height:1.6;color:${MUTED};">
+      If you didn't request this, you can ignore this email — your password stays the same unless you click the link above.
+    </p>
+  `;
+
+  return { subject, html: emailShell(bodyHtml, { preheader: 'Reset your Students Renewed Hope Project password.' }), text };
+}
+
+module.exports = { welcomeEmail, updateEmail, resetPasswordEmail };
