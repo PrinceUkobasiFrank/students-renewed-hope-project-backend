@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS students (
   institution_id INTEGER REFERENCES institutions(id),
   institution_name_freetext VARCHAR(200), -- fallback if institution isn't in our list yet
   vin VARCHAR(19), -- Voter's Identification Number, from their PVC. Admin-eyes-only: never returned by any student-facing endpoint (see /api/students/me and /api/auth/*), only by the admin students list.
+  reset_token_hash VARCHAR(64), -- sha256 of the password-reset token sent by email; never store the raw token
+  reset_token_expires_at TIMESTAMPTZ,
   level VARCHAR(30),
   ward VARCHAR(100),
   lga VARCHAR(100),
@@ -65,6 +67,8 @@ CREATE TABLE IF NOT EXISTS students (
 CREATE INDEX IF NOT EXISTS idx_students_state ON students(state_id);
 CREATE INDEX IF NOT EXISTS idx_students_email ON students(email);
 ALTER TABLE students ADD COLUMN IF NOT EXISTS vin VARCHAR(19);
+ALTER TABLE students ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(64);
+ALTER TABLE students ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMPTZ;
 
 -- ---------- cards ----------
 CREATE TABLE IF NOT EXISTS cards (
@@ -145,3 +149,14 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   status VARCHAR(20) NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'read', 'resolved')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Site-visit analytics. Only ever written when the visitor has accepted the
+-- cookie banner (see js/consent.js) — no IP, no user agent, no identifying
+-- data at all, just "someone loaded this path at this time" for a simple
+-- traffic count on the super admin dashboard.
+CREATE TABLE IF NOT EXISTS page_views (
+  id SERIAL PRIMARY KEY,
+  path VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_page_views_created ON page_views(created_at);
