@@ -313,4 +313,27 @@ router.post('/institutions', requireAdminAuth(['super_admin', 'national_admin', 
   res.status(201).json(rows[0]);
 }));
 
+// DELETE /api/admin/institutions/:id — a state_coordinator can only remove
+// institutions belonging to their own state; super_admin/national_admin
+// can remove any. This is a hard delete: if a student already registered
+// with this institution_id, that row's institution_id becomes NULL (see
+// schema.sql's ON DELETE SET NULL) and falls back to whatever freetext
+// name they typed, if any — nobody's registration silently disappears.
+router.delete('/institutions/:id', requireAdminAuth(['super_admin', 'national_admin', 'state_coordinator']), asyncHandler(async (req, res) => {
+  const existing = await pool.query('SELECT * FROM institutions WHERE id = $1', [req.params.id]);
+  if (!existing.rows.length) return res.status(404).json({ error: 'Institution not found.' });
+
+  if (req.admin.role === 'state_coordinator') {
+    if (!req.admin.state_id) {
+      return res.status(400).json({ error: "Your admin account isn't linked to a state yet — ask your super admin to fix this in the Admins page." });
+    }
+    if (existing.rows[0].state_id !== req.admin.state_id) {
+      return res.status(403).json({ error: 'You can only remove institutions in your own state.' });
+    }
+  }
+
+  await pool.query('DELETE FROM institutions WHERE id = $1', [req.params.id]);
+  res.status(204).send();
+}));
+
 module.exports = router;
