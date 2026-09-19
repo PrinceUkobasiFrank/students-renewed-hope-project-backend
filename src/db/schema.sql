@@ -69,6 +69,13 @@ CREATE INDEX IF NOT EXISTS idx_students_email ON students(email);
 ALTER TABLE students ADD COLUMN IF NOT EXISTS vin VARCHAR(19);
 ALTER TABLE students ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(64);
 ALTER TABLE students ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMPTZ;
+-- Deleting an institution shouldn't be blocked just because students already
+-- registered under it, and shouldn't silently fail either — set their
+-- institution_id to NULL instead (their institution_name_freetext, if any,
+-- still shows on the admin students list either way).
+ALTER TABLE students DROP CONSTRAINT IF EXISTS students_institution_id_fkey;
+ALTER TABLE students ADD CONSTRAINT students_institution_id_fkey
+  FOREIGN KEY (institution_id) REFERENCES institutions(id) ON DELETE SET NULL;
 
 -- ---------- cards ----------
 CREATE TABLE IF NOT EXISTS cards (
