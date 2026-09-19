@@ -9,9 +9,11 @@ const router = express.Router();
 router.get('/', asyncHandler(async (req, res) => {
   const statesResult = await pool.query(`
     SELECT s.id, s.name, s.code, s.status,
-           COUNT(st.id) AS students
+           COUNT(DISTINCT st.id) AS students,
+           COUNT(DISTINCT a.id) FILTER (WHERE a.role = 'state_coordinator') AS coordinator_count
     FROM states s
     LEFT JOIN students st ON st.state_id = s.id
+    LEFT JOIN admins a ON a.state_id = s.id
     GROUP BY s.id
     ORDER BY s.name
   `);
@@ -33,6 +35,7 @@ router.get('/', asyncHandler(async (req, res) => {
     code: s.code,
     status: s.status,
     students: parseInt(s.students, 10),
+    has_coordinator: parseInt(s.coordinator_count, 10) > 0,
     community_links: linksByState[s.id] || null,
     community_members: linksByState[s.id]
       ? linksResult.rows.filter((l) => l.state_id === s.id).reduce((sum, l) => sum + (l.member_count || 0), 0)
