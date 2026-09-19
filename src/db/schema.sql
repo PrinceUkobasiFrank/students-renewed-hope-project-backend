@@ -81,6 +81,7 @@ ALTER TABLE students ADD CONSTRAINT students_institution_id_fkey
 CREATE TABLE IF NOT EXISTS cards (
   id SERIAL PRIMARY KEY,
   student_id INTEGER REFERENCES students(id) ON DELETE CASCADE, -- nullable: card generation doesn't require login
+  state_id INTEGER REFERENCES states(id), -- captured directly at creation time, not just inferred by joining to students — keeps per-state counts correct even if a student's registered state later changes, and doesn't depend on the student row still existing
   template_id VARCHAR(50) DEFAULT 'default',
   ward VARCHAR(100),
   lga VARCHAR(100),
@@ -90,6 +91,15 @@ CREATE TABLE IF NOT EXISTS cards (
 );
 CREATE INDEX IF NOT EXISTS idx_cards_student ON cards(student_id);
 ALTER TABLE cards ALTER COLUMN student_id DROP NOT NULL;
+ALTER TABLE cards ADD COLUMN IF NOT EXISTS state_id INTEGER REFERENCES states(id);
+CREATE INDEX IF NOT EXISTS idx_cards_state ON cards(state_id);
+-- One-time backfill: any existing card that does have a student_id (i.e.
+-- every card generated since login became mandatory) can have its state_id
+-- filled in from that student's current state — this is what actually
+-- fixes "coordinator dashboard shows 0 cards" for cards that already exist.
+UPDATE cards SET state_id = students.state_id
+  FROM students
+  WHERE cards.student_id = students.id AND cards.state_id IS NULL;
 
 -- ---------- news ----------
 CREATE TABLE IF NOT EXISTS news (
